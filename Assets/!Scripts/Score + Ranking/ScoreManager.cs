@@ -18,17 +18,22 @@ public class ScoreManager : NetworkBehaviour
 
     void OnScoreChanged(int oldScore, int newScore)
     {
+        Debug.Log($"Score changed from {oldScore} to {newScore}");
         UpdateScoreText();
     }
 
     void UpdateScoreText()
     {
-        scoreText.text = "Score: " + score.ToString();
+        if (scoreText != null)
+        {
+            scoreText.text = "Score: " + score.ToString();
+        }
     }
 
     [Command]
     public void CmdAddScore(int value)
     {
+        Debug.Log($"Adding score: {value}");
         score += value;
     }
 }

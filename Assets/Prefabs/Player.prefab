@@ -186,6 +186,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+  scoreText: {fileID: 6909166194426646294, guid: 64f8161ece313f741b156e0a5518c682, type: 3}
+  rankText: {fileID: 9176475107773072552, guid: 3c02fd22404c71a48a17709c573dd820, type: 3}
 --- !u!114 &-8908606241830581003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -266,7 +268,6 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  currColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!1 &4243253754038428290
 GameObject:
   m_ObjectHideFlags: 0
