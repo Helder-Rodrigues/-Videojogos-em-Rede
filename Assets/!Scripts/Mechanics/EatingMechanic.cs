@@ -1,12 +1,44 @@
 using UnityEngine;
 using Mirror;
+using TMPro;
 
 public class EatingMechanic : NetworkBehaviour
 {
     private float baseGrowthFactor = 0.1f;
     private const float minPlayerSize = 0.31f;
-
     private const float tolerance = 0.001f; // A small threshold for floating-point comparison
+
+    [SyncVar(hook = nameof(OnScoreChanged))]
+    private int score;
+    [SyncVar(hook = nameof(OnRankChanged))]
+    private int rank;
+
+    public TMP_Text scoreText;
+    public TMP_Text rankText;
+
+    public int Score => score; // Property to access the score
+    public int Rank => rank;   // Property to access the rank
+
+    private void Start()
+    {
+        if (isLocalPlayer)
+        {
+            UpdateScoreText();
+            UpdateRankText();
+        }
+    }
+
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+        PlayerManager.Instance.RegisterPlayer(this);
+    }
+
+    public override void OnStopServer()
+    {
+        base.OnStopServer();
+        PlayerManager.Instance.UnregisterPlayer(this);
+    }
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -21,6 +53,7 @@ public class EatingMechanic : NetworkBehaviour
         {
             float playerSize = transform.localScale.x;
             float colliderSize = collision.transform.localScale.x;
+
             // Does nothing if the player can't eat
             // Use tolerance to compare sizes
             if (playerSize - colliderSize < tolerance)
@@ -30,8 +63,11 @@ public class EatingMechanic : NetworkBehaviour
             {
                 float growFactor = foodEaten ? baseGrowthFactor : colliderSize * (colliderSize / playerSize);
 
-                // Call command to grow the player
+                // Call command to grow the player and increase score
                 CmdGrowPlayer(growFactor);
+
+                // Increase score for eating
+                CmdIncreaseScore(foodEaten ? 10 : 50); // Example: 10 points for food, 50 points for players
             }
             else if (powerUpEaten)
             {
@@ -121,6 +157,51 @@ public class EatingMechanic : NetworkBehaviour
         {
             Destroy(eatenObject);
         }
+    }
+
+    [Command]
+    private void CmdIncreaseScore(int value)
+    {
+        // Only the server should perform the score increase action
+        score += value;
+        PlayerManager.Instance.UpdateRankings();
+    }
+
+    private void OnScoreChanged(int oldScore, int newScore)
+    {
+        if (isLocalPlayer)
+        {
+            UpdateScoreText();
+        }
+    }
+
+    private void OnRankChanged(int oldRank, int newRank)
+    {
+        if (isLocalPlayer)
+        {
+            UpdateRankText();
+        }
+    }
+
+    private void UpdateScoreText()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Score: " + score.ToString();
+        }
+    }
+
+    private void UpdateRankText()
+    {
+        if (rankText != null)
+        {
+            rankText.text = "Rank: " + rank.ToString();
+        }
+    }
+
+    public void UpdateRank(int newRank)
+    {
+        rank = newRank;
     }
 
     public void KillPlayer()

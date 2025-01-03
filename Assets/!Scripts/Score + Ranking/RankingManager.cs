@@ -18,17 +18,22 @@ public class RankingManager : NetworkBehaviour
 
     void OnRankChanged(int oldRank, int newRank)
     {
+        Debug.Log($"Rank changed from {oldRank} to {newRank}");
         UpdateRankText();
     }
 
     void UpdateRankText()
     {
-        rankText.text = "Rank: " + rank.ToString();
+        if (rankText != null)
+        {
+            rankText.text = "Rank: " + rank.ToString();
+        }
     }
 
     [Command]
     public void CmdUpdateRank(int newRank)
     {
+        Debug.Log($"Updating rank to: {newRank}");
         rank = newRank;
     }
 }
