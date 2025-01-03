@@ -31,6 +31,8 @@ public class PlayerSpawner : NetworkManager
         player.GetComponent<SpriteRenderer>().color = randomColor;
         GameManager.allPlayersColors.Add(randomColor);
 
+        
+
         // Add the player to the game
         NetworkServer.AddPlayerForConnection(conn, player);
 
