@@ -4,36 +4,28 @@ using Mirror;
 
 public class RankingManager : NetworkBehaviour
 {
-    public TMP_Text rankText;
-    [SyncVar(hook = nameof(OnRankChanged))]
-    private int rank;
+    [SerializeField] private TMP_Text rankText;
 
-    void Start()
+    public void UpdateRankText(int newRank)
     {
-        if (isLocalPlayer)
-        {
-            UpdateRankText();
-        }
+        rankText.text = "Rank: " + newRank.ToString();
     }
 
-    void OnRankChanged(int oldRank, int newRank)
+    [ClientRpc]
+    public void RpcUpdateRankText()
     {
-        Debug.Log($"Rank changed from {oldRank} to {newRank}");
-        UpdateRankText();
+        int rank = PlayerManager.Instance.players.FindIndex(p => p.netId == netId) + 1;
+        
+        Debug.Log($"Updating rank of {netId} to " + rank);
+        rankText.text = "Rank: " + rank.ToString();
     }
 
-    void UpdateRankText()
+    [ClientRpc]
+    public void RpcChangeRank()
     {
-        if (rankText != null)
-        {
-            rankText.text = "Rank: " + rank.ToString();
-        }
-    }
+        int value = PlayerManager.Instance.players.FindIndex(p => p.netId == netId) + 1;
 
-    [Command]
-    public void CmdUpdateRank(int newRank)
-    {
-        Debug.Log($"Updating rank to: {newRank}");
-        rank = newRank;
+        Debug.Log($"Updating rank of player {netId} to: {value}");
+        PlayerManager.Instance.players[value-1].rank = value;
     }
 }

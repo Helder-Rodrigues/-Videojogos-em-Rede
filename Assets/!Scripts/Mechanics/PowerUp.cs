@@ -5,9 +5,9 @@ public class PowerUp : MonoBehaviour
     // Enum for power-up types
     public enum PowerUpType
     {
-        SpeedBoost,
-        DoubleSize,
-        HalfSize
+        Faster,
+        Bigger,
+        Smaller
     }
 
     public PowerUpType powerUpType;

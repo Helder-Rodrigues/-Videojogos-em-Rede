@@ -285,8 +285,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  scoreText: {fileID: 6909166194426646294, guid: 64f8161ece313f741b156e0a5518c682, type: 3}
-  rankText: {fileID: 9176475107773072552, guid: 3c02fd22404c71a48a17709c573dd820, type: 3}
+  scoreText: {fileID: 0}
+  rankText: {fileID: 0}
 --- !u!114 &-8908606241830581003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -367,9 +367,8 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-<<<<<<< HEAD
   playerName: 
-  playerNameText: {fileID: 0}
+  playerNameText: {fileID: 1604483013857380969}
 --- !u!114 &1471424687312455707
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -387,8 +386,6 @@ MonoBehaviour:
   syncInterval: 0
   playerName: 
   playerNameText: {fileID: 1604483013857380969}
-=======
->>>>>>> 8925e305aaa62143f5e77191dc87dae0120d6369
 --- !u!1 &4243253754038428290
 GameObject:
   m_ObjectHideFlags: 0

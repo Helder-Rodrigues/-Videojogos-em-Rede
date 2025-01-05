@@ -4,36 +4,16 @@ using Mirror;
 
 public class ScoreManager : NetworkBehaviour
 {
-    public TMP_Text scoreText;
-    [SyncVar(hook = nameof(OnScoreChanged))]
-    private int score;
+    [SerializeField] private TMP_Text scoreText;
 
-    void Start()
+    public void UpdateScoreText(int score)
     {
-        if (isLocalPlayer)
-        {
-            UpdateScoreText();
-        }
+        scoreText.text = "Score: " + score.ToString();
     }
 
-    void OnScoreChanged(int oldScore, int newScore)
+    [ClientRpc]
+    public void RpcUpdateScoreText(int score)
     {
-        Debug.Log($"Score changed from {oldScore} to {newScore}");
-        UpdateScoreText();
-    }
-
-    void UpdateScoreText()
-    {
-        if (scoreText != null)
-        {
-            scoreText.text = "Score: " + score.ToString();
-        }
-    }
-
-    [Command]
-    public void CmdAddScore(int value)
-    {
-        Debug.Log($"Adding score: {value}");
-        score += value;
+        scoreText.text = "Score: " + score.ToString();
     }
 }

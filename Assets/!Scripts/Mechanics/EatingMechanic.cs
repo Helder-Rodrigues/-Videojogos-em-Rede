@@ -1,6 +1,8 @@
 using UnityEngine;
 using Mirror;
 using TMPro;
+using UnityEngine.SocialPlatforms.Impl;
+using System.Linq;
 
 public class EatingMechanic : NetworkBehaviour
 {
@@ -8,36 +10,130 @@ public class EatingMechanic : NetworkBehaviour
     private const float minPlayerSize = 0.31f;
     private const float tolerance = 0.001f; // A small threshold for floating-point comparison
 
-    [SyncVar(hook = nameof(OnScoreChanged))]
-    private int score;
-    [SyncVar(hook = nameof(OnRankChanged))]
-    private int rank;
+    public ScoreManager scoreManager = null;
+    public RankingManager rankManager = null;
 
-    public TMP_Text scoreText;
-    public TMP_Text rankText;
-
-    public int Score => score; // Property to access the score
-    public int Rank => rank;   // Property to access the rank
-
-    private void Start()
-    {
-        if (isLocalPlayer)
-        {
-            UpdateScoreText();
-            UpdateRankText();
-        }
-    }
-
-    public override void OnStartServer()
-    {
-        base.OnStartServer();
-        PlayerManager.Instance.RegisterPlayer(this);
-    }
+    public int score;
+    public int rank;
 
     public override void OnStopServer()
     {
         base.OnStopServer();
-        PlayerManager.Instance.UnregisterPlayer(this);
+        PlayerManager.Instance.HandlePlayerExit(this);
+    }
+
+    [TargetRpc]
+    public void UpdateRankOnPlayerExit(NetworkConnection target)
+    {
+        CmdAddScore(0);
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        base.OnStartLocalPlayer();
+        if (isLocalPlayer)
+        {
+            Debug.Log("Starting local player and loading managers...");
+            LoadManagers();
+
+            // Register the player
+            Debug.Log("Calling CmdRegisterPlayer for local player...");
+            CmdRegisterPlayer(this);
+
+            Debug.Log("adding score");
+            // Add score to the player
+            Debug.Log($"player {netId} is correct? " + (scoreManager != null));
+            CmdAddScore(0);
+        }
+    }
+
+    public void LoadManagers()
+    {
+        if (scoreManager != null && rankManager != null)
+            return;
+        
+        if (!isLocalPlayer)
+            return;
+
+        Debug.Log("Loading Managers...");
+        scoreManager = FindObjectOfType<ScoreManager>();
+        rankManager = FindObjectOfType<RankingManager>();
+
+        Debug.Log($"Found ScoreManager: {scoreManager != null}, RankManager: {rankManager != null}");
+    }
+
+    [Command]
+    public void CmdRegisterPlayer(EatingMechanic player)
+    {
+        // Ensure the player has a NetworkIdentity and is a valid networked object
+        if (player != null && player.GetComponent<NetworkIdentity>() != null)
+        {
+            Debug.Log("CmdRegisterPlayer called on server.");
+            PlayerManager.Instance.RegisterPlayer(player);
+        }
+        else
+        {
+            Debug.LogWarning("Invalid player object or NetworkIdentity missing.");
+        }
+    }
+
+    public void UpdateRankText()
+    {
+        Debug.Log("updating rank text for " + netId);
+        rankManager.UpdateRankText(rank);
+    }
+
+    [Command]
+    public void CmdAddScore(int value)
+    {
+        Debug.Log($"B-CmdAddScore: Updating score to {score + value} for player {netId}");
+
+        // Update the score
+        score += value;
+
+        // Check if rank should change
+        bool rankShouldChange = PlayerManager.Instance.CheckIfRankShouldChange(netId);
+
+        if (rankShouldChange)
+        {
+            if (PlayerManager.Instance == null)
+            {
+                Debug.LogError("CmdAddScore: PlayerManager.Instance is null.");
+                return;
+            }
+
+            PlayerManager.Instance.OrderPlayerRanks();
+            PlayerManager.Instance.UpdateRankings();
+        }
+        else
+            Debug.Log("not worth to update rank");
+
+        Debug.Log("Update All values and UI");
+        // Call GetValues for each player and invoke TargetRpc
+        foreach (var player in PlayerManager.Instance.players)
+            PlayerManager.Instance.GetValues(player.netId);
+    }
+
+    private void Update()
+    {
+        Debug.Log("rank value: " + rank);
+        Debug.Log("score value: " + score);
+    }
+
+    [TargetRpc]
+    public void TargerUpdateValues(NetworkConnection target, int newScore, int newRank)
+    {
+        Debug.Log($"Updating UI for player {netId}: score from {score} to {newScore}, rank from {rank} to {newRank}");
+        score = newScore;
+        rank = newRank;
+
+        ScoreManager scoreMangr = FindObjectOfType<ScoreManager>();
+        RankingManager rankMangr = FindObjectOfType<RankingManager>();
+
+        Debug.Log(scoreMangr == scoreManager);
+
+        scoreMangr.UpdateScoreText(score);
+        rankMangr.UpdateRankText(rank);
     }
 
     private void OnTriggerEnter2D(Collider2D collision)
@@ -67,7 +163,7 @@ public class EatingMechanic : NetworkBehaviour
                 CmdGrowPlayer(growFactor);
 
                 // Increase score for eating
-                CmdIncreaseScore(foodEaten ? 10 : 50); // Example: 10 points for food, 50 points for players
+                CmdAddScore(foodEaten ? 10 : 50);
             }
             else if (powerUpEaten)
             {
@@ -91,13 +187,13 @@ public class EatingMechanic : NetworkBehaviour
         // Apply power-up effect based on the type
         switch (powerUp.powerUpType)
         {
-            case PowerUp.PowerUpType.SpeedBoost:
-                transform.gameObject.GetComponent<PlayerMovement>().speed *= 1.5f;
+            case PowerUp.PowerUpType.Faster:
+                transform.gameObject.GetComponent<PlayerMovement>().speed *= 1.1f;
                 break;
 
-            case PowerUp.PowerUpType.DoubleSize:
-            case PowerUp.PowerUpType.HalfSize:
-                float sizeChangeFactor = (powerUp.powerUpType == PowerUp.PowerUpType.DoubleSize) ? playerSize : -(playerSize / 2);
+            case PowerUp.PowerUpType.Bigger:
+            case PowerUp.PowerUpType.Smaller:
+                float sizeChangeFactor = (powerUp.powerUpType == PowerUp.PowerUpType.Bigger) ? playerSize / 1.25f : -(playerSize / 2);
                 CmdGrowPlayer(sizeChangeFactor);
                 break;
         }
@@ -159,51 +255,6 @@ public class EatingMechanic : NetworkBehaviour
         }
     }
 
-    [Command]
-    private void CmdIncreaseScore(int value)
-    {
-        // Only the server should perform the score increase action
-        score += value;
-        PlayerManager.Instance.UpdateRankings();
-    }
-
-    private void OnScoreChanged(int oldScore, int newScore)
-    {
-        if (isLocalPlayer)
-        {
-            UpdateScoreText();
-        }
-    }
-
-    private void OnRankChanged(int oldRank, int newRank)
-    {
-        if (isLocalPlayer)
-        {
-            UpdateRankText();
-        }
-    }
-
-    private void UpdateScoreText()
-    {
-        if (scoreText != null)
-        {
-            scoreText.text = "Score: " + score.ToString();
-        }
-    }
-
-    private void UpdateRankText()
-    {
-        if (rankText != null)
-        {
-            rankText.text = "Rank: " + rank.ToString();
-        }
-    }
-
-    public void UpdateRank(int newRank)
-    {
-        rank = newRank;
-    }
-
     public void KillPlayer()
     {
         NetworkConnectionToClient conn = gameObject.GetComponent<NetworkIdentity>().connectionToClient;
@@ -213,8 +264,6 @@ public class EatingMechanic : NetworkBehaviour
             RpcNotifyPlayerLeft(gameObject);
 
             // Remove the player from the server
-            //NetworkServer.RemovePlayerForConnection(conn);
-
             conn.Disconnect();
         }
     }
